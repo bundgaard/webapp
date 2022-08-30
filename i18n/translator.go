@@ -24,15 +24,15 @@ func T(key string) string {
 	category, item := parts[0], parts[1]
 	language, ok := Default.translations.GetLanguage(Default.language)
 	if !ok {
-		return ""
+		return key
 	}
 	group, ok := language.GetCategory(category)
 	if !ok {
-		return ""
+		return key
 	}
 	part, ok := group.GetItem(item)
 	if !ok {
-		return ""
+		return key
 	}
 	return part
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"webapp/i18n"
 )
 
@@ -18,8 +19,12 @@ func main() {
 		fmt.Println("Translation of Title:", i18n.T("general.app_title"))
 		fmt.Fprintf(w, "Title %s", i18n.T("general.app_title"))
 	})
+
 	http.HandleFunc("/en", func(w http.ResponseWriter, r *http.Request) {
-		i18n.SetLanguage("en")
+		language := r.Header.Get("Accept-Language")
+		if strings.Contains(language, "en") {
+			i18n.SetLanguage("en")
+		}
 		fmt.Println("Translation of Title:", i18n.T("general.app_title"))
 		fmt.Fprintf(w, "Title %s", i18n.T("general.app_title"))
 	})
