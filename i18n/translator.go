@@ -9,59 +9,14 @@ import (
 	"strings"
 )
 
-type Language struct {
-	languages map[string]*Category
-}
-
-func (l *Language) GetLanguage(language string) (Category, bool) {
-	v, ok := l.languages[language]
-	return v, ok
-}
-
-func (l *Language) AddLanguage(language string) error {
-	_, ok := l.languages[language]
-	if !ok {
-		l.languages[language] = &Category{}
-	}
-	return nil
-}
-
-type Category struct {
-	categories map[string]Item
-}
-
-func (c *Category) GetCategory(category string) (Item, bool) {
-	v, ok := c.categories[category]
-	return v, ok
-}
-
-func (c *Category) merge(other Category) {
-	for k, v := range other.categories {
-		c.categories[k] = v
-	}
-}
-
-type Item struct {
-	items map[string]string
-}
-
-func (i Item) GetItem(item string) (string, bool) {
-	v, ok := i.items[item]
-	return v, ok
-}
-
 type I18N struct {
 	language     string
 	files        []string
 	translations *Language
 }
 
-/*
-	[language] -> [type]  -> [item] -> Translated Value
-*/
-
 var Default = &I18N{
-	translations: &Language{languages: make(map[string]Category)},
+	translations: NewLanguage(),
 }
 
 func T(key string) string {
@@ -69,14 +24,15 @@ func T(key string) string {
 	category, item := parts[0], parts[1]
 	language, ok := Default.translations.GetLanguage(Default.language)
 	if !ok {
+		return ""
 	}
 	group, ok := language.GetCategory(category)
 	if !ok {
-
+		return ""
 	}
 	part, ok := group.GetItem(item)
 	if !ok {
-
+		return ""
 	}
 	return part
 }
@@ -102,15 +58,9 @@ func Load(relFp string) error {
 		}
 	}
 
+	// Category
 	for _, file := range Default.files {
-		parts := strings.Split(file, ".")
-		category, language, _ := parts[0], parts[1], parts[2]
-		slashIdx := strings.LastIndex(category, "\\")
-		category = category[slashIdx+1:]
-		_, ok := Default.translations[Language(language)]
-		if !ok {
-			Default.translations[Language(language)] = make(map[Category]map[Item]string)
-		}
+		language, category := splitLanguageAndCategory(file)
 
 		content, err := os.ReadFile(file)
 		if err != nil {
@@ -123,10 +73,33 @@ func Load(relFp string) error {
 			log.Fatal(err)
 		}
 
-		Default.translations[Language(language)][Category(category)] = make(map[Item]string)
-		for k, v := range translations[language] {
-			Default.translations[Language(language)][Category(category)][Item(k)] = v
+		item := Item{items: make(map[string]string)}
+		// Category
+		for k, v := range translations[language] { // app_title: foo
+			item.items[k] = v
 		}
+		add(language, category, item)
+
 	}
+
 	return nil
+}
+
+func add(language string, category string, item Item) {
+	_, ok := Default.translations.languages[language].categories[category]
+	if !ok {
+		Default.translations.languages[language] = Category{categories: map[string]Item{category: item}}
+	} else {
+		Default.translations.languages[language].categories[category] = item
+	}
+}
+
+func splitLanguageAndCategory(file string) (string, string) {
+	lastSlash := strings.LastIndex(file, "\\")
+	file = file[lastSlash+1:]
+	parts := strings.Split(file, ".")
+	category, language, _ := parts[0], parts[1], parts[2]
+	slashIdx := strings.LastIndex(category, "\\")
+	category = category[slashIdx+1:]
+	return language, category
 }
